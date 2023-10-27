@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "de.siebes.fabian.virtucard"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "de.siebes.fabian.virtucard"
         minSdk = 31
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 

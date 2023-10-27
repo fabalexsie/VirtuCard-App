@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">VirtuCard</string>
+    <string name="servicedesc">VirtuCard Url Service</string>
+    <string name="aiddescription">This service shares the url to your contact card.</string>
 </resources>
