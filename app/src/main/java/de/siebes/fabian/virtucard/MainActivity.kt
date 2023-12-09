@@ -7,29 +7,30 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import de.siebes.fabian.virtucard.ui.theme.VirtuCardTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,19 +46,20 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainContent() {
-    val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState()
-    var showBottomSheet by remember { mutableStateOf(false) }
+    val scaffoldState = rememberBottomSheetScaffoldState(
+        bottomSheetState = SheetState(
+            initialValue = SheetValue.PartiallyExpanded,
+            skipPartiallyExpanded = false,
+            skipHiddenState = true,
+        )
+    )
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    showBottomSheet = true
-                },
-                content = { Text("Click") }
-            )
-        }
+    BottomSheetScaffold(
+        sheetContent = { MyBottomSheet() },
+        containerColor = Color.Transparent,
+        scaffoldState = scaffoldState,
+        sheetContainerColor = MaterialTheme.colorScheme.background,
+        sheetPeekHeight = 50.dp,
     ) { innerPadding ->
 
         // A surface container using the 'background' color from the theme
@@ -68,13 +70,6 @@ fun MainContent() {
             color = MaterialTheme.colorScheme.background
         ) {
             MyWebView()
-        }
-        if (showBottomSheet) {
-            MyBottomSheet(sheetState, hide = {
-                scope.launch { sheetState.hide() }.invokeOnCompletion {
-                    if (!sheetState.isVisible) showBottomSheet = false
-                }
-            }) { showBottomSheet = false }
         }
     }
 }
@@ -98,19 +93,28 @@ fun MyWebView() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyBottomSheet(
-    sheetState: SheetState,
-    hide: () -> Unit,
-    onDismissRequest: () -> Unit
 ) {
-
-    ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(15.dp, bottom = 50.dp)
     ) {
         // Sheet content
-        Button(onClick = hide) {
+        // QR-Code, Nearby, ...
+        Button(onClick = { }) {
             Text(text = "Hello World!")
         }
+        Divider(Modifier.padding(vertical = 15.dp), thickness = 1.dp)
+        Button(onClick = {}) {
+            Text(text = "Hello World!")
+        }
+        Text(
+            text = "Created by Fabian Siebes",
+            Modifier
+                .padding(25.dp)
+                .fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -126,7 +130,7 @@ fun BottomSheetPreview() {
             color = MaterialTheme.colorScheme.errorContainer
         ) {
             // BottomSheetContent()
-            MyBottomSheet(sheetState = sheetState, hide = { }, onDismissRequest = { })
+            MyBottomSheet()
         }
     }
 }
