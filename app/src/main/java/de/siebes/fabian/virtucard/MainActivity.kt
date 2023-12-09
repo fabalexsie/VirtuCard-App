@@ -1,12 +1,14 @@
 package de.siebes.fabian.virtucard
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,14 +42,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
 import de.siebes.fabian.virtucard.ui.theme.VirtuCardTheme
-import org.intellij.lang.annotations.JdkConstants.HorizontalAlignment
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,7 +112,7 @@ fun MyWebView() {
     })
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun MyBottomSheet(
 ) {
@@ -155,6 +160,18 @@ fun MyBottomSheet(
         Divider(Modifier.padding(vertical = vSpaceDp), thickness = 1.dp)
 
         // QR-Code, ...
+        // ~https://stackoverflow.com/a/64504871
+        val  size = 512
+        val hints = hashMapOf<EncodeHintType, Int>().also { it[EncodeHintType.MARGIN] = 1 } // Make the QR code buffer border narrower
+        val bits = QRCodeWriter().encode("test", BarcodeFormat.QR_CODE, size, size, hints)
+        val bmpQRCode = Bitmap.createBitmap(512, 512, Bitmap.Config.RGB_565).also {
+            for (x in 0 until size) {
+                for (y in 0 until size) {
+                    it.setPixel(x, y, if (bits[x, y]) MaterialTheme.colorScheme.primary.toArgb() else MaterialTheme.colorScheme.background.toArgb())
+                }
+            }
+        }
+        Image(bmpQRCode.asImageBitmap(), contentDescription = "QR Code for url", modifier = Modifier.fillMaxWidth())
         Button(onClick = {}) {
             Text(text = "Hello World!")
         }
