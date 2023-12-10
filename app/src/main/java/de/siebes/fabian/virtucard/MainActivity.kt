@@ -163,6 +163,10 @@ fun MyBottomSheet(
         mutableStateOf(shareUrl) // pass the initial value
     }
 
+    LaunchedEffect(shareUrl) {
+        editShareUrl = shareUrl
+    }
+
     val size = 512
     var bmpQRCode by remember {
         mutableStateOf(Bitmap.createBitmap(size, size, Bitmap.Config.RGBA_F16))
