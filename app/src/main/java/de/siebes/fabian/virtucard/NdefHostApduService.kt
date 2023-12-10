@@ -53,7 +53,7 @@ class NdefHostApduService : HostApduService() {
 
     private fun observeUserPrefs(): LiveData<String> {
         return UserPreferencesRepository(dataStore).userPreferencesFlow.map {
-            "${Consts.BASE_PROFILE_URL}${it.userId}"
+            Utils.getProfileUrl(it.userId)
         }.asLiveData()
     }
 

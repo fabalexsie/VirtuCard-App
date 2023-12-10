@@ -41,18 +41,18 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -175,34 +175,21 @@ fun MyBottomSheet(
         Log.d("MyLog", "Composable MyBottomSheet Column: ${userId}")
         // Nearby, Copy, Share
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            OutlinedButton(onClick = { }, modifier = Modifier.padding(horizontal = 5.dp)) {
-                Icon(
-                    painter = painterResource(id = R.drawable.nearby_share),
-                    contentDescription = "Nearby Icon",
-                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                )
-                Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = "Nearby")
-            }
-            OutlinedButton(onClick = { }, modifier = Modifier.padding(horizontal = 5.dp)) {
-                // use drawable inside of icon
-                Icon(
-                    painter = painterResource(id = R.drawable.baseline_content_copy_24),
-                    contentDescription = "Copy Icon",
-                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                )
-                Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = "Copy")
-            }
-            OutlinedButton(onClick = { }, modifier = Modifier.padding(horizontal = 5.dp)) {
-                Icon(
-                    Icons.Filled.Share,
-                    contentDescription = "Share Icon",
-                    modifier = Modifier.size(ButtonDefaults.IconSize)
-                )
-                Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-                Text(text = "Share")
-            }
+            MyIconOutlineButton(
+                text = "Nearby",
+                painter = painterResource(id = R.drawable.nearby_share),
+                onClick = {}
+            )
+            MyIconOutlineButton(
+                text = "Copy",
+                painter = painterResource(id = R.drawable.baseline_content_copy_24),
+                onClick = {}
+            )
+            MyIconOutlineButton(
+                text = "Share",
+                painter = rememberVectorPainter(image = Icons.Filled.Share),
+                onClick = {}
+            )
         }
 
         Divider(Modifier.padding(vertical = vSpaceDp), thickness = 1.dp)
@@ -212,7 +199,7 @@ fun MyBottomSheet(
         }
         Spacer(modifier = Modifier.height(vSpaceDp))
         Text(
-            text = "${Consts.BASE_PROFILE_URL}$userId",
+            text = Utils.getProfileUrl(userId),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -253,6 +240,19 @@ fun MyBottomSheet(
 }
 
 @Composable
+fun MyIconOutlineButton(text: String, painter: Painter, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.padding(horizontal = 5.dp)) {
+        Icon(
+            painter = painter,
+            contentDescription = "Icon for $text",
+            modifier = Modifier.size(ButtonDefaults.IconSize)
+        )
+        Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
+        Text(text = text)
+    }
+}
+
+@Composable
 fun QRCode(userId: String) {
     val size = 512
     var bmpQRCode by remember {
@@ -268,7 +268,7 @@ fun QRCode(userId: String) {
                 it[EncodeHintType.MARGIN] = 1
             } // Make the QR code buffer border narrower
             val bits = QRCodeWriter().encode(
-                "${Consts.BASE_PROFILE_URL}$userId",
+                Utils.getProfileUrl(userId),
                 BarcodeFormat.QR_CODE,
                 size,
                 size,
