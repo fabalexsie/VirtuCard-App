@@ -1,13 +1,17 @@
 package de.siebes.fabian.virtucard
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -53,6 +57,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -165,8 +170,34 @@ fun MyBottomSheet(
     val userId = userPrefsUiState.value.userId
     val userPw = userPrefsUiState.value.userPw
 
-    val vSpaceDp = 15.dp
+    val context = LocalContext.current
+    val shareUrlViaNearby = {
+        val sendNearbyIntent = Intent().apply {
+            action = "com.google.android.gms.SHARE_NEARBY"
+            putExtra(Intent.EXTRA_TEXT, Utils.getProfileUrl(userId))
+            type = "text/plain"
+            setPackage("com.google.android.gms")
+        }
+        context.startActivity(sendNearbyIntent)
+    }
+    val copyToClipboard = {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("VirtuCard profile url", Utils.getProfileUrl(userId))
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+    val shareUrlViaIntent = {
+        val sendIntent: Intent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, Utils.getProfileUrl(userId))
+            type = "text/plain"
+        }
+        val shareIntent = Intent.createChooser(sendIntent, null)
+        context.startActivity(shareIntent)
+    }
 
+
+    val vSpaceDp = 15.dp
     Column(
         Modifier
             .fillMaxWidth()
@@ -178,17 +209,17 @@ fun MyBottomSheet(
             MyIconOutlineButton(
                 text = "Nearby",
                 painter = painterResource(id = R.drawable.nearby_share),
-                onClick = {}
+                onClick = shareUrlViaNearby
             )
             MyIconOutlineButton(
                 text = "Copy",
                 painter = painterResource(id = R.drawable.baseline_content_copy_24),
-                onClick = {}
+                onClick = copyToClipboard
             )
             MyIconOutlineButton(
                 text = "Share",
                 painter = rememberVectorPainter(image = Icons.Filled.Share),
-                onClick = {}
+                onClick = shareUrlViaIntent
             )
         }
 
