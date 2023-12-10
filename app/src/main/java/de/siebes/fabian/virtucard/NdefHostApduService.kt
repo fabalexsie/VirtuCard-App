@@ -1,9 +1,15 @@
 package de.siebes.fabian.virtucard
 
+import android.content.Context
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
+import android.os.CombinedVibration
+import android.os.VibrationAttributes
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
 import de.siebes.fabian.virtucard.data.UserPreferencesRepository
@@ -53,6 +59,15 @@ class NdefHostApduService : HostApduService() {
         }.asLiveData()
     }
 
+    private fun getNdefUrlMessage(ndefData: String?): NdefMessage? {
+        if(ndefData == null) return null
+        if (ndefData.isEmpty()) {
+            return null
+        }
+        val ndefRecord: NdefRecord = NdefRecord.createUri(ndefData)
+        return NdefMessage(ndefRecord)
+    }
+
     private fun saveAsNdefMessage(shareUrl: String) {
         val ndefMessage: NdefMessage? = getNdefUrlMessage(shareUrl)
         if (ndefMessage != null) {
@@ -70,13 +85,17 @@ class NdefHostApduService : HostApduService() {
         }
     }
 
-    private fun getNdefUrlMessage(ndefData: String?): NdefMessage? {
-        if(ndefData == null) return null
-        if (ndefData.isEmpty()) {
-            return null
-        }
-        val ndefRecord: NdefRecord = NdefRecord.createUri(ndefData)
-        return NdefMessage(ndefRecord)
+    private fun vibrateToNotifySuccess() {
+        val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        vibratorManager.vibrate(
+            CombinedVibration.createParallel(
+                VibrationEffect.createWaveform( // gemorst - . .
+                    longArrayOf(0, 200, 150, 50, 100, 50),
+                    intArrayOf(0, 255, 0, 255, 0, 255),
+                    -1
+                )
+            )
+        )
     }
 
     /**
@@ -114,11 +133,13 @@ class NdefHostApduService : HostApduService() {
                 // When selecting CC, the offset must be 0, and the length must match the file length (15).
                 System.arraycopy(CC_FILE, offset, responseApdu, 0, le)
                 System.arraycopy(SUCCESS_SW, 0, responseApdu, le, SUCCESS_SW.size)
+                vibrateToNotifySuccess()
                 return responseApdu
             } else if (mNdefSelected) {
                 if (offset + le <= mNdefRecordFile.size) {
                     System.arraycopy(mNdefRecordFile, offset, responseApdu, 0, le)
                     System.arraycopy(SUCCESS_SW, 0, responseApdu, le, SUCCESS_SW.size)
+                    vibrateToNotifySuccess()
                     return responseApdu
                 }
             }
