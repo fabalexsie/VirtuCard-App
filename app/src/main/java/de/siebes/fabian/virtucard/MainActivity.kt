@@ -110,20 +110,17 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
         UserPrefsUiState("", "")
     )
 
-    val backCol = MaterialTheme.colorScheme.background
-
     BottomSheetScaffold(
         sheetContent = {
             MyBottomSheet(
                 { userPrefsViewModel.updateUserId(userId = it) },
                 { userPrefsViewModel.updateUserPw(userPw = it) },
-                userPrefsUiState,
-                backCol
+                userPrefsUiState
             )
         },
         containerColor = Color.Transparent,
         scaffoldState = scaffoldState,
-        sheetContainerColor = backCol,
+        sheetContainerColor = MaterialTheme.colorScheme.background,
         sheetPeekHeight = 50.dp,
     ) { innerPadding ->
         // A surface container using the 'background' color from the theme
@@ -159,49 +156,13 @@ fun MyWebView() {
 fun MyBottomSheet(
     onUpdateUserId: (String) -> Unit,
     onUpdateUserPw: (String) -> Unit,
-    userPrefsUiState: State<UserPrefsUiState>,
-    background: Color
+    userPrefsUiState: State<UserPrefsUiState>
 ) {
     var openChangeUserIdDialog by remember { mutableStateOf(false) }
     var openChangeUserPwDialog by remember { mutableStateOf(false) }
 
     val userId = userPrefsUiState.value.userId
     val userPw = userPrefsUiState.value.userPw
-
-    val size = 512
-    var bmpQRCode by remember {
-        mutableStateOf(Bitmap.createBitmap(size, size, Bitmap.Config.RGBA_F16))
-    }
-
-    val frontCol = MaterialTheme.colorScheme.primary
-    val backCol = MaterialTheme.colorScheme.background
-    Log.d("", "$backCol $background")
-    LaunchedEffect(userId, frontCol, background) {
-        if (userId.isNotEmpty()) {
-            // ~https://stackoverflow.com/a/64504871
-            val hints = hashMapOf<EncodeHintType, Int>().also {
-                it[EncodeHintType.MARGIN] = 1
-            } // Make the QR code buffer border narrower
-            val bits = QRCodeWriter().encode(
-                "${Consts.BASE_PROFILE_URL}$userId",
-                BarcodeFormat.QR_CODE,
-                size,
-                size,
-                hints
-            )
-            bmpQRCode = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
-                for (x in 0 until size) {
-                    for (y in 0 until size) {
-                        it.setPixel(
-                            x,
-                            y,
-                            if (bits[x, y]) frontCol.toArgb() else background.toArgb()
-                        )
-                    }
-                }
-            }
-        }
-    }
 
     val vSpaceDp = 15.dp
 
@@ -246,12 +207,7 @@ fun MyBottomSheet(
         Divider(Modifier.padding(vertical = vSpaceDp), thickness = 1.dp)
 
         if (userId.isNotEmpty()) {
-            // QR-Code
-            Image(
-                bmpQRCode.asImageBitmap(),
-                contentDescription = "QR Code for url",
-                modifier = Modifier.fillMaxWidth()
-            )
+            QRCode(userId)
         }
         Button(onClick = {
             openChangeUserIdDialog = true
@@ -278,10 +234,53 @@ fun MyBottomSheet(
         if (openChangeUserIdDialog) {
             EditDialog({ openChangeUserIdDialog = false }, onUpdateUserId, userId)
         }
-        if(openChangeUserPwDialog) {
+        if (openChangeUserPwDialog) {
             EditDialog({ openChangeUserPwDialog = false }, onUpdateUserPw, userPw)
         }
     }
+}
+
+@Composable
+fun QRCode(userId: String) {
+    val size = 512
+    var bmpQRCode by remember {
+        mutableStateOf(Bitmap.createBitmap(size, size, Bitmap.Config.RGBA_F16))
+    }
+
+    val frontCol = MaterialTheme.colorScheme.primary
+    val backCol = MaterialTheme.colorScheme.background
+    LaunchedEffect(userId, frontCol) {
+        if (userId.isNotEmpty()) {
+            // ~https://stackoverflow.com/a/64504871
+            val hints = hashMapOf<EncodeHintType, Int>().also {
+                it[EncodeHintType.MARGIN] = 1
+            } // Make the QR code buffer border narrower
+            val bits = QRCodeWriter().encode(
+                "${Consts.BASE_PROFILE_URL}$userId",
+                BarcodeFormat.QR_CODE,
+                size,
+                size,
+                hints
+            )
+            bmpQRCode = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
+                for (x in 0 until size) {
+                    for (y in 0 until size) {
+                        it.setPixel(
+                            x,
+                            y,
+                            if (bits[x, y]) frontCol.toArgb() else backCol.toArgb()
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    Image(
+        bmpQRCode.asImageBitmap(),
+        contentDescription = "QR Code for url",
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
