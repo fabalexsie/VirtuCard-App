@@ -1,8 +1,10 @@
 package de.siebes.fabian.virtucard
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,10 +36,14 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,20 +53,42 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.ViewModelProvider
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
+import de.siebes.fabian.virtucard.data.UserPreferencesRepository
+import de.siebes.fabian.virtucard.ui.ShareUrlViewModel
+import de.siebes.fabian.virtucard.ui.ShareUrlViewModelFactory
+import de.siebes.fabian.virtucard.ui.UserPrefsUiState
 import de.siebes.fabian.virtucard.ui.theme.VirtuCardTheme
 
+
+private const val USER_PREFERENCES_NAME = "user_preferences"
+
+private val Context.dataStore by preferencesDataStore(
+    name = USER_PREFERENCES_NAME
+)
+
 class MainActivity : ComponentActivity() {
+    private lateinit var userPrefsViewModel: ShareUrlViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        userPrefsViewModel = ViewModelProvider(
+            this,
+            ShareUrlViewModelFactory(
+                UserPreferencesRepository(dataStore)
+            )
+        )[ShareUrlViewModel::class.java]
+
         setContent {
             VirtuCardTheme {
-                MainContent()
+                MainContent(userPrefsViewModel)
             }
         }
     }
@@ -67,7 +96,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainContent() {
+fun MainContent(userPrefsViewModel: ShareUrlViewModel) {
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = SheetState(
             initialValue = SheetValue.Expanded,
@@ -76,14 +105,21 @@ fun MainContent() {
         )
     )
 
+    val userPrefsUiState = userPrefsViewModel.userPrefsUiStateLiveData.observeAsState(
+        UserPrefsUiState("")
+    )
+
+    val backCol = MaterialTheme.colorScheme.background
+
     BottomSheetScaffold(
-        sheetContent = { MyBottomSheet() },
+        sheetContent = {
+            MyBottomSheet({ userPrefsViewModel.updateShareUrl(shareUrl = it) }, userPrefsUiState, backCol)
+        },
         containerColor = Color.Transparent,
         scaffoldState = scaffoldState,
-        sheetContainerColor = MaterialTheme.colorScheme.background,
+        sheetContainerColor = backCol,
         sheetPeekHeight = 50.dp,
     ) { innerPadding ->
-
         // A surface container using the 'background' color from the theme
         Surface(
             modifier = Modifier
@@ -115,8 +151,46 @@ fun MyWebView() {
 
 @Composable
 fun MyBottomSheet(
+    onUpdateShareUrl: (String) -> Unit,
+    userPrefsUiState: State<UserPrefsUiState>,
+    background: Color
 ) {
-    var shareUrl by remember { mutableStateOf("") }
+    var openChangeShareUrlDialog by remember { mutableStateOf(false) }
+
+    val shareUrl = userPrefsUiState.value.shareUrl
+
+    var editShareUrl by remember {
+        mutableStateOf(shareUrl) // pass the initial value
+    }
+
+    val size = 512
+    var bmpQRCode by remember {
+        mutableStateOf(Bitmap.createBitmap(size, size, Bitmap.Config.RGBA_F16))
+    }
+
+    val frontCol = MaterialTheme.colorScheme.primary
+    val backCol = MaterialTheme.colorScheme.background
+    Log.d("", "$backCol $background")
+    LaunchedEffect(shareUrl, frontCol, background) {
+        if (shareUrl.isNotEmpty()) {
+            // ~https://stackoverflow.com/a/64504871
+            val hints = hashMapOf<EncodeHintType, Int>().also {
+                it[EncodeHintType.MARGIN] = 1
+            } // Make the QR code buffer border narrower
+            val bits = QRCodeWriter().encode(shareUrl, BarcodeFormat.QR_CODE, size, size, hints)
+            bmpQRCode = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
+                for (x in 0 until size) {
+                    for (y in 0 until size) {
+                        it.setPixel(
+                            x,
+                            y,
+                            if (bits[x, y]) frontCol.toArgb() else background.toArgb()
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     val vSpaceDp = 15.dp
 
@@ -125,6 +199,7 @@ fun MyBottomSheet(
             .fillMaxWidth()
             .padding(horizontal = 15.dp)
     ) {
+        Log.d("MyLog", "Composable MyBottomSheet Column: ${shareUrl}")
         // Nearby, ...
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             OutlinedButton(onClick = { }, modifier = Modifier.padding(horizontal = 5.dp)) {
@@ -160,27 +235,22 @@ fun MyBottomSheet(
         Divider(Modifier.padding(vertical = vSpaceDp), thickness = 1.dp)
 
         // QR-Code, ...
-        // ~https://stackoverflow.com/a/64504871
-        val  size = 512
-        val hints = hashMapOf<EncodeHintType, Int>().also { it[EncodeHintType.MARGIN] = 1 } // Make the QR code buffer border narrower
-        val bits = QRCodeWriter().encode("test", BarcodeFormat.QR_CODE, size, size, hints)
-        val bmpQRCode = Bitmap.createBitmap(512, 512, Bitmap.Config.RGB_565).also {
-            for (x in 0 until size) {
-                for (y in 0 until size) {
-                    it.setPixel(x, y, if (bits[x, y]) MaterialTheme.colorScheme.primary.toArgb() else MaterialTheme.colorScheme.background.toArgb())
-                }
-            }
+        if (shareUrl.isNotEmpty()) {
+            Image(
+                bmpQRCode.asImageBitmap(),
+                contentDescription = "QR Code for url",
+                modifier = Modifier.fillMaxWidth()
+            )
         }
-        Image(bmpQRCode.asImageBitmap(), contentDescription = "QR Code for url", modifier = Modifier.fillMaxWidth())
-        Button(onClick = {}) {
-            Text(text = "Hello World!")
+        Button(onClick = {
+            openChangeShareUrlDialog = true
+        }) {
+            Text(text = "Change url")
         }
 
         Spacer(modifier = Modifier.height(vSpaceDp))
-        TextField(
-            value = shareUrl,
-            onValueChange = { shareUrl = it },
-            label = { Text("Share URL") },
+        Text(
+            text = shareUrl,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -193,28 +263,37 @@ fun MyBottomSheet(
         )
 
         Spacer(modifier = Modifier.height(vSpaceDp))
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true)
-@Composable
-fun BottomSheetPreview() {
-    VirtuCardTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.errorContainer
-        ) {
-            // BottomSheetContent()
-            MyBottomSheet()
+        if (openChangeShareUrlDialog) {
+            AlertDialog(
+                onDismissRequest = { openChangeShareUrlDialog = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onUpdateShareUrl(editShareUrl)
+                            openChangeShareUrlDialog = false
+                        }
+                    ) {
+                        Text(text = "Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { openChangeShareUrlDialog = false }
+                    ) {
+                        Text(text = "Cancel")
+                    }
+                },
+                title = {
+                    Text(text = "Change url")
+                },
+                text = {
+                    Column {
+                        Text(text = "Enter your new url")
+                        TextField(value = editShareUrl, onValueChange = { editShareUrl = it })
+                    }
+                }
+            )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AppViewPreview() {
-    VirtuCardTheme {
-        MainContent()
     }
 }
