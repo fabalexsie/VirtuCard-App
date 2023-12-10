@@ -41,6 +41,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -113,7 +114,12 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
 
     BottomSheetScaffold(
         sheetContent = {
-            MyBottomSheet({ userPrefsViewModel.updateUserId(userId = it) }, userPrefsUiState, backCol)
+            MyBottomSheet(
+                { userPrefsViewModel.updateUserId(userId = it) },
+                { userPrefsViewModel.updateUserPw(userPw = it) },
+                userPrefsUiState,
+                backCol
+            )
         },
         containerColor = Color.Transparent,
         scaffoldState = scaffoldState,
@@ -152,20 +158,15 @@ fun MyWebView() {
 @Composable
 fun MyBottomSheet(
     onUpdateUserId: (String) -> Unit,
+    onUpdateUserPw: (String) -> Unit,
     userPrefsUiState: State<UserPrefsUiState>,
     background: Color
 ) {
     var openChangeUserIdDialog by remember { mutableStateOf(false) }
+    var openChangeUserPwDialog by remember { mutableStateOf(false) }
 
     val userId = userPrefsUiState.value.userId
-
-    var editUserId by remember {
-        mutableStateOf(userId) // pass the initial value
-    }
-
-    LaunchedEffect(userId) {
-        editUserId = userId
-    }
+    val userPw = userPrefsUiState.value.userPw
 
     val size = 512
     var bmpQRCode by remember {
@@ -181,7 +182,13 @@ fun MyBottomSheet(
             val hints = hashMapOf<EncodeHintType, Int>().also {
                 it[EncodeHintType.MARGIN] = 1
             } // Make the QR code buffer border narrower
-            val bits = QRCodeWriter().encode("${Consts.BASE_PROFILE_URL}$userId", BarcodeFormat.QR_CODE, size, size, hints)
+            val bits = QRCodeWriter().encode(
+                "${Consts.BASE_PROFILE_URL}$userId",
+                BarcodeFormat.QR_CODE,
+                size,
+                size,
+                hints
+            )
             bmpQRCode = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
                 for (x in 0 until size) {
                     for (y in 0 until size) {
@@ -204,7 +211,7 @@ fun MyBottomSheet(
             .padding(horizontal = 15.dp)
     ) {
         Log.d("MyLog", "Composable MyBottomSheet Column: ${userId}")
-        // Nearby, ...
+        // Nearby, Copy, Share
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             OutlinedButton(onClick = { }, modifier = Modifier.padding(horizontal = 5.dp)) {
                 Icon(
@@ -238,8 +245,8 @@ fun MyBottomSheet(
 
         Divider(Modifier.padding(vertical = vSpaceDp), thickness = 1.dp)
 
-        // QR-Code, ...
         if (userId.isNotEmpty()) {
+            // QR-Code
             Image(
                 bmpQRCode.asImageBitmap(),
                 contentDescription = "QR Code for url",
@@ -269,35 +276,51 @@ fun MyBottomSheet(
         Spacer(modifier = Modifier.height(vSpaceDp))
 
         if (openChangeUserIdDialog) {
-            AlertDialog(
-                onDismissRequest = { openChangeUserIdDialog = false },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            onUpdateUserId(editUserId)
-                            openChangeUserIdDialog = false
-                        }
-                    ) {
-                        Text(text = "Save")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { openChangeUserIdDialog = false }
-                    ) {
-                        Text(text = "Cancel")
-                    }
-                },
-                title = {
-                    Text(text = "Change url")
-                },
-                text = {
-                    Column {
-                        Text(text = "Enter your new url")
-                        TextField(value = editUserId, onValueChange = { editUserId = it })
-                    }
-                }
-            )
+            EditDialog({ openChangeUserIdDialog = false }, onUpdateUserId, userId)
+        }
+        if(openChangeUserPwDialog) {
+            EditDialog({ openChangeUserPwDialog = false }, onUpdateUserPw, userPw)
         }
     }
+}
+
+@Composable
+fun EditDialog(closeDialog: () -> Unit, onUpdateUserId: (String) -> Unit, initValue: String) {
+    var editValue by remember {
+        mutableStateOf(initValue) // pass the initial value
+    }
+
+    LaunchedEffect(initValue) {
+        editValue = initValue
+    }
+
+    AlertDialog(
+        onDismissRequest = { closeDialog() },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onUpdateUserId(editValue)
+                    closeDialog()
+                }
+            ) {
+                Text(text = "Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = closeDialog
+            ) {
+                Text(text = "Cancel")
+            }
+        },
+        title = {
+            Text(text = "Change url")
+        },
+        text = {
+            Column {
+                Text(text = "Enter your new url")
+                TextField(value = editValue, onValueChange = { editValue = it })
+            }
+        }
+    )
 }
