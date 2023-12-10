@@ -69,7 +69,7 @@ import de.siebes.fabian.virtucard.ui.theme.VirtuCardTheme
 
 private const val USER_PREFERENCES_NAME = "user_preferences"
 
-private val Context.dataStore by preferencesDataStore(
+public val Context.dataStore by preferencesDataStore(
     name = USER_PREFERENCES_NAME
 )
 
