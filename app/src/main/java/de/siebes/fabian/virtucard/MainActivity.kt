@@ -61,8 +61,8 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import de.siebes.fabian.virtucard.data.UserPreferencesRepository
-import de.siebes.fabian.virtucard.ui.ShareUrlViewModel
-import de.siebes.fabian.virtucard.ui.ShareUrlViewModelFactory
+import de.siebes.fabian.virtucard.ui.UserPrefsViewModel
+import de.siebes.fabian.virtucard.ui.UserPrefsViewModelFactory
 import de.siebes.fabian.virtucard.ui.UserPrefsUiState
 import de.siebes.fabian.virtucard.ui.theme.VirtuCardTheme
 
@@ -74,17 +74,17 @@ public val Context.dataStore by preferencesDataStore(
 )
 
 class MainActivity : ComponentActivity() {
-    private lateinit var userPrefsViewModel: ShareUrlViewModel
+    private lateinit var userPrefsViewModel: UserPrefsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         userPrefsViewModel = ViewModelProvider(
             this,
-            ShareUrlViewModelFactory(
+            UserPrefsViewModelFactory(
                 UserPreferencesRepository(dataStore)
             )
-        )[ShareUrlViewModel::class.java]
+        )[UserPrefsViewModel::class.java]
 
         setContent {
             VirtuCardTheme {
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainContent(userPrefsViewModel: ShareUrlViewModel) {
+fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = SheetState(
             initialValue = SheetValue.Expanded,
@@ -106,14 +106,14 @@ fun MainContent(userPrefsViewModel: ShareUrlViewModel) {
     )
 
     val userPrefsUiState = userPrefsViewModel.userPrefsUiStateLiveData.observeAsState(
-        UserPrefsUiState("")
+        UserPrefsUiState("", "")
     )
 
     val backCol = MaterialTheme.colorScheme.background
 
     BottomSheetScaffold(
         sheetContent = {
-            MyBottomSheet({ userPrefsViewModel.updateShareUrl(shareUrl = it) }, userPrefsUiState, backCol)
+            MyBottomSheet({ userPrefsViewModel.updateUserId(userId = it) }, userPrefsUiState, backCol)
         },
         containerColor = Color.Transparent,
         scaffoldState = scaffoldState,
@@ -151,20 +151,20 @@ fun MyWebView() {
 
 @Composable
 fun MyBottomSheet(
-    onUpdateShareUrl: (String) -> Unit,
+    onUpdateUserId: (String) -> Unit,
     userPrefsUiState: State<UserPrefsUiState>,
     background: Color
 ) {
-    var openChangeShareUrlDialog by remember { mutableStateOf(false) }
+    var openChangeUserIdDialog by remember { mutableStateOf(false) }
 
-    val shareUrl = userPrefsUiState.value.shareUrl
+    val userId = userPrefsUiState.value.userId
 
-    var editShareUrl by remember {
-        mutableStateOf(shareUrl) // pass the initial value
+    var editUserId by remember {
+        mutableStateOf(userId) // pass the initial value
     }
 
-    LaunchedEffect(shareUrl) {
-        editShareUrl = shareUrl
+    LaunchedEffect(userId) {
+        editUserId = userId
     }
 
     val size = 512
@@ -175,13 +175,13 @@ fun MyBottomSheet(
     val frontCol = MaterialTheme.colorScheme.primary
     val backCol = MaterialTheme.colorScheme.background
     Log.d("", "$backCol $background")
-    LaunchedEffect(shareUrl, frontCol, background) {
-        if (shareUrl.isNotEmpty()) {
+    LaunchedEffect(userId, frontCol, background) {
+        if (userId.isNotEmpty()) {
             // ~https://stackoverflow.com/a/64504871
             val hints = hashMapOf<EncodeHintType, Int>().also {
                 it[EncodeHintType.MARGIN] = 1
             } // Make the QR code buffer border narrower
-            val bits = QRCodeWriter().encode(shareUrl, BarcodeFormat.QR_CODE, size, size, hints)
+            val bits = QRCodeWriter().encode("${Consts.BASE_PROFILE_URL}$userId", BarcodeFormat.QR_CODE, size, size, hints)
             bmpQRCode = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
                 for (x in 0 until size) {
                     for (y in 0 until size) {
@@ -203,7 +203,7 @@ fun MyBottomSheet(
             .fillMaxWidth()
             .padding(horizontal = 15.dp)
     ) {
-        Log.d("MyLog", "Composable MyBottomSheet Column: ${shareUrl}")
+        Log.d("MyLog", "Composable MyBottomSheet Column: ${userId}")
         // Nearby, ...
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             OutlinedButton(onClick = { }, modifier = Modifier.padding(horizontal = 5.dp)) {
@@ -239,7 +239,7 @@ fun MyBottomSheet(
         Divider(Modifier.padding(vertical = vSpaceDp), thickness = 1.dp)
 
         // QR-Code, ...
-        if (shareUrl.isNotEmpty()) {
+        if (userId.isNotEmpty()) {
             Image(
                 bmpQRCode.asImageBitmap(),
                 contentDescription = "QR Code for url",
@@ -247,14 +247,14 @@ fun MyBottomSheet(
             )
         }
         Button(onClick = {
-            openChangeShareUrlDialog = true
+            openChangeUserIdDialog = true
         }) {
             Text(text = "Change url")
         }
 
         Spacer(modifier = Modifier.height(vSpaceDp))
         Text(
-            text = shareUrl,
+            text = userId,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -268,14 +268,14 @@ fun MyBottomSheet(
 
         Spacer(modifier = Modifier.height(vSpaceDp))
 
-        if (openChangeShareUrlDialog) {
+        if (openChangeUserIdDialog) {
             AlertDialog(
-                onDismissRequest = { openChangeShareUrlDialog = false },
+                onDismissRequest = { openChangeUserIdDialog = false },
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            onUpdateShareUrl(editShareUrl)
-                            openChangeShareUrlDialog = false
+                            onUpdateUserId(editUserId)
+                            openChangeUserIdDialog = false
                         }
                     ) {
                         Text(text = "Save")
@@ -283,7 +283,7 @@ fun MyBottomSheet(
                 },
                 dismissButton = {
                     TextButton(
-                        onClick = { openChangeShareUrlDialog = false }
+                        onClick = { openChangeUserIdDialog = false }
                     ) {
                         Text(text = "Cancel")
                     }
@@ -294,7 +294,7 @@ fun MyBottomSheet(
                 text = {
                     Column {
                         Text(text = "Enter your new url")
-                        TextField(value = editShareUrl, onValueChange = { editShareUrl = it })
+                        TextField(value = editUserId, onValueChange = { editUserId = it })
                     }
                 }
             )

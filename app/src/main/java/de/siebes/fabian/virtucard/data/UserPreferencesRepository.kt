@@ -14,7 +14,8 @@ import java.io.IOException
 
 // ~ https://github.com/android/codelab-android-datastore/blob/preferences_datastore/app/src/main/java/com/codelab/android/datastore/data/UserPreferencesRepository.kt
 data class UserPreferences(
-    val shareUrl: String,
+    val userId: String,
+    val userPw: String,
 )
 
 /**
@@ -25,7 +26,8 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
     private val TAG: String = "UserPreferencesRepo"
 
     private object PreferencesKeys {
-        val SHARE_URL = stringPreferencesKey("share_url")
+        val USERID = stringPreferencesKey("user_id")
+        val USERPW = stringPreferencesKey("user_pw")
     }
 
     /**
@@ -45,9 +47,15 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
         }
 
 
-    suspend fun updateShareUrl(shareUrl: String) {
+    suspend fun updateUserId(userId: String) {
         dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SHARE_URL] = shareUrl
+            preferences[PreferencesKeys.USERID] = userId
+        }
+    }
+
+    suspend fun updateUserPw(userPw: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.USERPW] = userPw
         }
     }
 
@@ -57,7 +65,8 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
 
     private fun mapUserPreferences(preferences: Preferences): UserPreferences {
         // Get our show completed value, defaulting to "" if not set:
-        val shareUrl = preferences[PreferencesKeys.SHARE_URL] ?: ""
-        return UserPreferences(shareUrl)
+        val userId = preferences[PreferencesKeys.USERID] ?: ""
+        val userPw = preferences[PreferencesKeys.USERPW] ?: ""
+        return UserPreferences(userId, userPw)
     }
 }

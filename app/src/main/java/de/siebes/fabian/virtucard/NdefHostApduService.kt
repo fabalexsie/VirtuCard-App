@@ -6,9 +6,7 @@ import android.nfc.NdefRecord
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.CombinedVibration
-import android.os.VibrationAttributes
 import android.os.VibrationEffect
-import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
@@ -46,16 +44,16 @@ class NdefHostApduService : HostApduService() {
             saveAsNdefMessage(shareUrl)
         }
 
-        observeShareUrlInPrefs().observeForever(liveDataObserver)
+        observeUserPrefs().observeForever(liveDataObserver)
     }
 
     override fun onDestroy() {
-        observeShareUrlInPrefs().removeObserver(liveDataObserver)
+        observeUserPrefs().removeObserver(liveDataObserver)
     }
 
-    private fun observeShareUrlInPrefs(): LiveData<String> {
+    private fun observeUserPrefs(): LiveData<String> {
         return UserPreferencesRepository(dataStore).userPreferencesFlow.map {
-            it.shareUrl
+            "${Consts.BASE_PROFILE_URL}${it.userId}"
         }.asLiveData()
     }
 
@@ -68,8 +66,8 @@ class NdefHostApduService : HostApduService() {
         return NdefMessage(ndefRecord)
     }
 
-    private fun saveAsNdefMessage(shareUrl: String) {
-        val ndefMessage: NdefMessage? = getNdefUrlMessage(shareUrl)
+    private fun saveAsNdefMessage(url: String) {
+        val ndefMessage: NdefMessage? = getNdefUrlMessage(url)
         if (ndefMessage != null) {
             val nlen = ndefMessage.byteArrayLength
             mNdefRecordFile = ByteArray(nlen + 2)
