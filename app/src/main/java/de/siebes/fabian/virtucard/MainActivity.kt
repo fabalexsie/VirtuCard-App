@@ -116,6 +116,8 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
         UserPrefsUiState("", "")
     )
 
+    val urlToLoad = Utils.getProfileUrl(userPrefsUiState.value.userId, userPrefsUiState.value.userPw)
+
     BottomSheetScaffold(
         sheetContent = {
             MyBottomSheet(
@@ -136,14 +138,14 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
                 .padding(innerPadding),
             color = MaterialTheme.colorScheme.background
         ) {
-            MyWebView()
+            MyWebView(urlToLoad)
         }
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun MyWebView() {
+fun MyWebView(url: String?) {
     AndroidView(factory = {
         WebView(it).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -152,7 +154,7 @@ fun MyWebView() {
             )
             webViewClient = WebViewClient()
             settings.javaScriptEnabled = true
-            loadUrl("http://fabsie.tk")
+            loadUrl(url ?: Utils.BASE_URL)
         }
     })
 }
@@ -230,7 +232,7 @@ fun MyBottomSheet(
         }
         Spacer(modifier = Modifier.height(vSpaceDp))
         Text(
-            text = Utils.getProfileUrl(userId),
+            text = Utils.getProfileUrl(userId) ?: "Please enter a userid",
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )

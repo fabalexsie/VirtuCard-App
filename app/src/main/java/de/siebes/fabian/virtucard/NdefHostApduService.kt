@@ -37,11 +37,16 @@ class NdefHostApduService : HostApduService() {
         mNdefSelected = false
 
         liveDataObserver = {
-            // default url to share
-            // the maximum length is 246 so do not extend this value
-            val shareUrl = if (it.length > 246) it.substring(0, 246) else it
+            val shareUrl = Utils.getProfileUrl(it)
+            if (shareUrl == null) {
+                saveAsNdefMessage(Utils.BASE_URL)
+            } else {
+                // the maximum length is 246 so do not extend this value
+                val shareUrlTruncated =
+                    if (shareUrl.length > 246) shareUrl.substring(0, 246) else shareUrl
 
-            saveAsNdefMessage(shareUrl)
+                saveAsNdefMessage(shareUrlTruncated)
+            }
         }
 
         observeUserPrefs().observeForever(liveDataObserver)
@@ -53,12 +58,12 @@ class NdefHostApduService : HostApduService() {
 
     private fun observeUserPrefs(): LiveData<String> {
         return UserPreferencesRepository(dataStore).userPreferencesFlow.map {
-            Utils.getProfileUrl(it.userId)
+            it.userId
         }.asLiveData()
     }
 
     private fun getNdefUrlMessage(ndefData: String?): NdefMessage? {
-        if(ndefData == null) return null
+        if (ndefData == null) return null
         if (ndefData.isEmpty()) {
             return null
         }
