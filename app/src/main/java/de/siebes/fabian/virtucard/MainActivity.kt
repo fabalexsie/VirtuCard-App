@@ -48,6 +48,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -209,17 +210,28 @@ fun MyBottomSheet(
         if (userId.isNotEmpty()) {
             QRCode(userId)
         }
-        Button(onClick = {
-            openChangeUserIdDialog = true
-        }) {
-            Text(text = "Change url")
-        }
-
         Spacer(modifier = Modifier.height(vSpaceDp))
         Text(
-            text = userId,
+            text = "${Consts.BASE_PROFILE_URL}$userId",
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Divider(Modifier.padding(vertical = vSpaceDp), thickness = 1.dp)
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Button(onClick = {
+                openChangeUserIdDialog = true
+            }) {
+                Text(text = "Change userid")
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Button(onClick = {
+                openChangeUserPwDialog = true
+            }) {
+                Text(text = "Change password")
+            }
+        }
 
         Spacer(modifier = Modifier.height(vSpaceDp))
         Text(
