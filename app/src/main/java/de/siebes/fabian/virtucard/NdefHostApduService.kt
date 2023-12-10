@@ -1,10 +1,13 @@
 package de.siebes.fabian.virtucard
 
-import android.content.Intent
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.asLiveData
+import de.siebes.fabian.virtucard.data.UserPreferencesRepository
+import kotlinx.coroutines.flow.map
 
 // based on https://github.com/MichaelsPlayground/NfcHceNdefEmulator/blob/fa2ca23d78004ef4a3823010ef7838ea1597f3cb/app/src/main/java/de/androidcrypto/nfchcendefemulator/MyHostApduService.java
 class NdefHostApduService : HostApduService() {
@@ -19,6 +22,8 @@ class NdefHostApduService : HostApduService() {
 
     // Flag to determine if the NDEF record file is selected or not.
     private var mNdefSelected = false
+
+    private lateinit var liveDataObserver: (String) -> Unit
     override fun onCreate() {
         super.onCreate()
 
@@ -27,43 +32,42 @@ class NdefHostApduService : HostApduService() {
         mCcSelected = false
         mNdefSelected = false
 
-        // default url to share
-        // the maximum length is 246 so do not extend this value
-        val ndefDefaultMessage = getNdefUrlMessage("https://github.com/fabalexsie/")
-        val nlen = ndefDefaultMessage!!.byteArrayLength
-        mNdefRecordFile = ByteArray(nlen + 2)
-        mNdefRecordFile[0] = ((nlen and 0xff00) / 256).toByte()
-        mNdefRecordFile[1] = (nlen and 0xff).toByte()
-        System.arraycopy(
-            ndefDefaultMessage.toByteArray(),
-            0,
-            mNdefRecordFile,
-            2,
-            ndefDefaultMessage.byteArrayLength
-        )
+        liveDataObserver = {
+            // default url to share
+            // the maximum length is 246 so do not extend this value
+            val shareUrl = if (it.length > 246) it.substring(0, 246) else it
+
+            saveAsNdefMessage(shareUrl)
+        }
+
+        observeShareUrlInPrefs().observeForever(liveDataObserver)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null) {
-            // intent contains an URL
-            if (intent.hasExtra("ndefUrl")) {
-                val ndefMessage: NdefMessage? = getNdefUrlMessage(intent.getStringExtra("ndefUrl"))
-                if (ndefMessage != null) {
-                    val nlen = ndefMessage.byteArrayLength
-                    mNdefRecordFile = ByteArray(nlen + 2)
-                    mNdefRecordFile[0] = ((nlen and 0xff00) / 256).toByte()
-                    mNdefRecordFile[1] = (nlen and 0xff).toByte()
-                    System.arraycopy(
-                        ndefMessage.toByteArray(),
-                        0,
-                        mNdefRecordFile,
-                        2,
-                        ndefMessage.byteArrayLength
-                    )
-                }
-            }
+    override fun onDestroy() {
+        observeShareUrlInPrefs().removeObserver(liveDataObserver)
+    }
+
+    private fun observeShareUrlInPrefs(): LiveData<String> {
+        return UserPreferencesRepository(dataStore).userPreferencesFlow.map {
+            it.shareUrl
+        }.asLiveData()
+    }
+
+    private fun saveAsNdefMessage(shareUrl: String) {
+        val ndefMessage: NdefMessage? = getNdefUrlMessage(shareUrl)
+        if (ndefMessage != null) {
+            val nlen = ndefMessage.byteArrayLength
+            mNdefRecordFile = ByteArray(nlen + 2)
+            mNdefRecordFile[0] = ((nlen and 0xff00) / 256).toByte()
+            mNdefRecordFile[1] = (nlen and 0xff).toByte()
+            System.arraycopy(
+                ndefMessage.toByteArray(),
+                0,
+                mNdefRecordFile,
+                2,
+                ndefMessage.byteArrayLength
+            )
         }
-        return super.onStartCommand(intent, flags, startId)
     }
 
     private fun getNdefUrlMessage(ndefData: String?): NdefMessage? {
@@ -79,7 +83,7 @@ class NdefHostApduService : HostApduService() {
      * Perform operations behaving as NFC Forum Tag Type 4.
      * Receive C-APDU and return the corresponding R-APDU.
      */
-    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle): ByteArray {
+    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray {
         if (SELECT_APP.contentEquals(commandApdu)) {
             // Selecting the application.
             mAppSelected = true
