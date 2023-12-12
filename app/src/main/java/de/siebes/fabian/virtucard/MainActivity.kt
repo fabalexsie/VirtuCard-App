@@ -116,7 +116,6 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
         UserPrefsUiState("", "")
     )
 
-    val urlToLoad = Utils.getProfileUrl(userPrefsUiState.value.userId, userPrefsUiState.value.userPw)
 
     BottomSheetScaffold(
         sheetContent = {
@@ -126,7 +125,7 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
                 userPrefsUiState
             )
         },
-        containerColor = Color.Transparent,
+        containerColor = Color(0xff5390d9),
         scaffoldState = scaffoldState,
         sheetContainerColor = MaterialTheme.colorScheme.background,
         sheetPeekHeight = 50.dp,
@@ -138,14 +137,19 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
                 .padding(innerPadding),
             color = MaterialTheme.colorScheme.background
         ) {
-            MyWebView(urlToLoad)
+            MyWebView(userPrefsUiState)
         }
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun MyWebView(url: String?) {
+fun MyWebView(userPrefsUiState: State<UserPrefsUiState>) {
+    val urlToLoad = Utils.getProfileUrl(
+        userPrefsUiState.value.userId,
+        userPrefsUiState.value.userPw
+    )
+
     AndroidView(factory = {
         WebView(it).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -154,8 +158,10 @@ fun MyWebView(url: String?) {
             )
             webViewClient = WebViewClient()
             settings.javaScriptEnabled = true
-            loadUrl(url ?: Utils.BASE_URL)
+            loadUrl(urlToLoad ?: Utils.BASE_URL)
         }
+    }, update = {
+        it.loadUrl(urlToLoad ?: Utils.BASE_URL)
     })
 }
 
@@ -205,7 +211,6 @@ fun MyBottomSheet(
             .fillMaxWidth()
             .padding(horizontal = 15.dp)
     ) {
-        Log.d("MyLog", "Composable MyBottomSheet Column: ${userId}")
         // Nearby, Copy, Share
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             MyIconOutlineButton(
