@@ -7,8 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
-import android.util.Log
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -57,7 +57,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,9 +70,9 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import de.siebes.fabian.virtucard.data.UserPreferencesRepository
+import de.siebes.fabian.virtucard.ui.UserPrefsUiState
 import de.siebes.fabian.virtucard.ui.UserPrefsViewModel
 import de.siebes.fabian.virtucard.ui.UserPrefsViewModelFactory
-import de.siebes.fabian.virtucard.ui.UserPrefsUiState
 import de.siebes.fabian.virtucard.ui.theme.VirtuCardTheme
 
 
@@ -106,7 +108,7 @@ class MainActivity : ComponentActivity() {
 fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = SheetState(
-            initialValue = SheetValue.Expanded,
+            initialValue = SheetValue.PartiallyExpanded,
             skipPartiallyExpanded = false,
             skipHiddenState = true,
         )
@@ -116,6 +118,7 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
         UserPrefsUiState("", "")
     )
 
+    val peekHeight = 50.dp
 
     BottomSheetScaffold(
         sheetContent = {
@@ -125,30 +128,29 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
                 userPrefsUiState
             )
         },
-        containerColor = Color(0xff5390d9),
+        containerColor = Color.Transparent,
         scaffoldState = scaffoldState,
         sheetContainerColor = MaterialTheme.colorScheme.background,
-        sheetPeekHeight = 50.dp,
-    ) { innerPadding ->
+        sheetPeekHeight = peekHeight,
+    ) { _ -> // _ = innerPadding
         // A surface container using the 'background' color from the theme
         Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            color = MaterialTheme.colorScheme.background
+            modifier = Modifier.fillMaxSize(),
         ) {
-            MyWebView(userPrefsUiState)
+            MyWebView(userPrefsUiState, with(LocalDensity.current) { peekHeight.toPx() })
         }
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun MyWebView(userPrefsUiState: State<UserPrefsUiState>) {
+fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
     val urlToLoad = Utils.getProfileUrl(
         userPrefsUiState.value.userId,
         userPrefsUiState.value.userPw
     )
+
+    var webViewHeight = 0
 
     AndroidView(factory = {
         WebView(it).apply {
@@ -158,10 +160,21 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>) {
             )
             webViewClient = WebViewClient()
             settings.javaScriptEnabled = true
+            addJavascriptInterface(
+                object {
+                    @JavascriptInterface
+                    fun getBottomPad(webpageHeight: Double): Double {
+                        return bottomPad / webViewHeight * webpageHeight
+                    }
+                },
+                "VirtuCardApp"
+            )
             loadUrl(urlToLoad ?: Utils.BASE_URL)
         }
     }, update = {
         it.loadUrl(urlToLoad ?: Utils.BASE_URL)
+    }, modifier = Modifier.fillMaxSize().onGloballyPositioned {
+        webViewHeight = it.size.height
     })
 }
 
