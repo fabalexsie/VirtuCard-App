@@ -7,8 +7,10 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -16,6 +18,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +34,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -51,6 +55,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -150,42 +155,80 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
         userPrefsUiState.value.userPw
     )
 
+    val loading = remember { mutableStateOf(true) }
+
     var webViewHeight = 0
 
-    AndroidView(factory = {
-        WebView(it).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+    // implementation 'com.google.accompanist:accompanist-swiperefresh:0.24.13-rc'
+    // https://stackoverflow.com/a/72922328/21597449
+
+    Box {
+        if (loading.value) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .width(64.dp)
+                    .align(alignment = Alignment.Center)
+                    .padding(bottom = bottomPad.dp),
+                color = MaterialTheme.colorScheme.secondary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
-            webViewClient = WebViewClient()
-            settings.javaScriptEnabled = true
-            addJavascriptInterface(
-                object {
-                    @JavascriptInterface
-                    fun getBottomPad(webpageHeight: Double): Double {
-                        return bottomPad / webViewHeight * webpageHeight
-                    }
-                },
-                "VirtuCardApp"
-            )
-            // Activate caching of the webpage
-            settings.cacheMode = WebSettings.LOAD_DEFAULT // load online by default
-            settings.domStorageEnabled = true
-            if (Utils.isNetworkAvailable(context)) {
-                clearCache(true)
-            } else { // loading offline
-                settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
-            }
-            loadUrl(urlToLoad ?: Utils.BASE_URL)
+
         }
-    }, update = {
-        it.loadUrl(urlToLoad ?: Utils.BASE_URL)
-    }, modifier = Modifier
-        .fillMaxSize()
-        .onGloballyPositioned {
-            webViewHeight = it.size.height
-        })
+        AndroidView(factory = {
+            WebView(it).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                webViewClient = object : WebViewClient() {
+                    // could be called multiple times
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        // timeout to prevent flickering
+                        postDelayed({
+                            visibility = View.VISIBLE
+                            loading.value = false
+                        }, 300)
+                    }
+                }
+                visibility = View.INVISIBLE
+                settings.javaScriptEnabled = true
+                addJavascriptInterface(
+                    object {
+                        @JavascriptInterface
+                        fun getBottomPad(webpageHeight: Double): Double {
+                            return bottomPad / webViewHeight * webpageHeight
+                        }
+                    },
+                    "VirtuCardApp"
+                )
+                settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK // loading offline if possible
+
+                val hasNetwork = Utils.isNetworkAvailable(context)
+                if (urlToLoad == null) {
+                    if (hasNetwork) {
+                        loadUrl(Utils.BASE_URL)
+                        loading.value = true
+                    }
+                } else {
+                    loadUrl(urlToLoad)
+                    loading.value = true
+                }
+            }
+        }, update = {
+            val hasNetwork = Utils.isNetworkAvailable(it.context)
+            if (urlToLoad == null) {
+                if (hasNetwork) {
+                    it.loadUrl(Utils.BASE_URL)
+                }
+            } else {
+                it.loadUrl(urlToLoad)
+            }
+        }, modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned {
+                webViewHeight = it.size.height
+            })
+    }
 }
 
 
