@@ -6,6 +6,7 @@
         android:name="android.hardware.nfc.hce"
         android:required="true" />
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.VIBRATE" />

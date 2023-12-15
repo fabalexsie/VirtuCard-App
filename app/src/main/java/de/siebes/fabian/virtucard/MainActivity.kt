@@ -169,13 +169,23 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                 },
                 "VirtuCardApp"
             )
+            // Activate caching of the webpage
+            settings.cacheMode = WebSettings.LOAD_DEFAULT // load online by default
+            settings.domStorageEnabled = true
+            if (Utils.isNetworkAvailable(context)) {
+                clearCache(true)
+            } else { // loading offline
+                settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+            }
             loadUrl(urlToLoad ?: Utils.BASE_URL)
         }
     }, update = {
         it.loadUrl(urlToLoad ?: Utils.BASE_URL)
-    }, modifier = Modifier.fillMaxSize().onGloballyPositioned {
-        webViewHeight = it.size.height
-    })
+    }, modifier = Modifier
+        .fillMaxSize()
+        .onGloballyPositioned {
+            webViewHeight = it.size.height
+        })
 }
 
 
