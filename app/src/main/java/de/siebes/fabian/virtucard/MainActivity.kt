@@ -150,17 +150,21 @@ fun MainContent(userPrefsViewModel: UserPrefsViewModel) {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
-    val urlToLoad = Utils.getProfileUrl(
-        userPrefsUiState.value.userId,
-        userPrefsUiState.value.userPw
-    )
+    var _urlToLoad by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    LaunchedEffect(userPrefsUiState.value.userId, userPrefsUiState.value.userPw) {
+        _urlToLoad = Utils.getProfileUrl(
+            userPrefsUiState.value.userId,
+            userPrefsUiState.value.userPw
+        )
+    }
+    val urlToLoad = _urlToLoad
 
     val loading = remember { mutableStateOf(true) }
 
     var webViewHeight = 0
-
-    // implementation 'com.google.accompanist:accompanist-swiperefresh:0.24.13-rc'
-    // https://stackoverflow.com/a/72922328/21597449
 
     Box {
         if (loading.value) {
@@ -201,7 +205,8 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                     },
                     "VirtuCardApp"
                 )
-                settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK // loading offline if possible
+                settings.cacheMode =
+                    WebSettings.LOAD_CACHE_ELSE_NETWORK // loading offline if possible
 
                 val hasNetwork = Utils.isNetworkAvailable(context)
                 if (urlToLoad == null) {
