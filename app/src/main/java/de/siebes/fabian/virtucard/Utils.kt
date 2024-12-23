@@ -7,8 +7,9 @@ import android.net.NetworkCapabilities
 class Utils {
 
     companion object {
-        const val BASE_URL = "https://virtucard.fabsie.de/"
-        private const val BASE_PROFILE_URL = BASE_URL + "p/"
+        const val HOST_NAME = "virtucard.fabsie.de"
+        const val BASE_URL = "https://$HOST_NAME/"
+        private const val BASE_PROFILE_URL = "${BASE_URL}p/"
 
         fun getProfileUrl(id: String): String? {
             if (id.isNotEmpty()) {

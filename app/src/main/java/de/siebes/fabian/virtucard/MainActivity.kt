@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -192,6 +193,19 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                             visibility = View.VISIBLE
                             loading.value = false
                         }, 300)
+                    }
+
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): Boolean {
+                        if(request?.url?.host === Utils.HOST_NAME) {
+                            return false
+                        } else {
+                            val intent = Intent(Intent.ACTION_VIEW, request?.url)
+                            context.startActivity(intent)
+                            return true
+                        }
                     }
                 }
                 visibility = View.INVISIBLE
