@@ -7,10 +7,12 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Handler
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -186,20 +188,11 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
                 webViewClient = object : WebViewClient() {
-                    // could be called multiple times
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        // timeout to prevent flickering
-                        postDelayed({
-                            visibility = View.VISIBLE
-                            loading.value = false
-                        }, 300)
-                    }
-
                     override fun shouldOverrideUrlLoading(
                         view: WebView?,
                         request: WebResourceRequest?
                     ): Boolean {
-                        if(request?.url?.host === Utils.HOST_NAME) {
+                        if (request?.url?.host === Utils.HOST_NAME) {
                             return false
                         } else {
                             val intent = Intent(Intent.ACTION_VIEW, request?.url)
@@ -216,30 +209,50 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                         fun getBottomPad(webpageHeight: Double): Double {
                             return bottomPad / webViewHeight * webpageHeight
                         }
+                        @JavascriptInterface
+                        fun pageLoadFinished() {
+                            post {
+                                visibility = View.VISIBLE
+                                loading.value = false
+                            }
+                        }
                     },
                     "VirtuCardApp"
                 )
-                settings.cacheMode =
-                    WebSettings.LOAD_CACHE_ELSE_NETWORK // loading offline if possible
 
                 val hasNetwork = Utils.isNetworkAvailable(context)
+                if(hasNetwork) {
+                    settings.cacheMode = WebSettings.LOAD_DEFAULT
+                    // if waiting more than 2s load from cache-else-network
+                    postDelayed({
+                        if(loading.value) {
+                            settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+                            reload()
+                        }
+                    }, 2000)
+                } else {
+                    settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+                }
+
                 if (urlToLoad == null) {
                     if (hasNetwork) {
-                        loadUrl(Utils.BASE_URL)
                         loading.value = true
+                        loadUrl(Utils.BASE_URL)
                     }
                 } else {
-                    loadUrl(urlToLoad)
                     loading.value = true
+                    loadUrl(urlToLoad)
                 }
             }
         }, update = {
             val hasNetwork = Utils.isNetworkAvailable(it.context)
             if (urlToLoad == null) {
                 if (hasNetwork) {
+                    loading.value = true
                     it.loadUrl(Utils.BASE_URL)
                 }
             } else {
+                loading.value = true
                 it.loadUrl(urlToLoad)
             }
         }, modifier = Modifier
