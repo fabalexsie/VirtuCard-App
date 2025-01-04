@@ -223,13 +223,13 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                 val hasNetwork = Utils.isNetworkAvailable(context)
                 if(hasNetwork) {
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
-                    // if waiting more than 2s load from cache-else-network
+                    // if waiting more than 4s load from cache-else-network
                     postDelayed({
                         if(loading.value) {
                             settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                             reload()
                         }
-                    }, 2000)
+                    }, 4000)
                 } else {
                     settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                 }
