@@ -192,7 +192,7 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                         view: WebView?,
                         request: WebResourceRequest?
                     ): Boolean {
-                        if (request?.url?.host === Utils.HOST_NAME) {
+                        if (request?.url?.host == Utils.HOST_NAME) {
                             return false
                         } else {
                             val intent = Intent(Intent.ACTION_VIEW, request?.url)
