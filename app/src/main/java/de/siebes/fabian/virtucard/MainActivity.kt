@@ -7,12 +7,10 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Bundle
-import android.os.Handler
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -86,7 +84,7 @@ import de.siebes.fabian.virtucard.ui.theme.VirtuCardTheme
 
 private const val USER_PREFERENCES_NAME = "user_preferences"
 
-public val Context.dataStore by preferencesDataStore(
+val Context.dataStore by preferencesDataStore(
     name = USER_PREFERENCES_NAME
 )
 
