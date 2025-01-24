@@ -154,6 +154,7 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
     var _urlToLoad by remember {
         mutableStateOf<String?>(null)
     }
+    val hasNetwork = Utils.isNetworkAvailable(LocalContext.current)
 
     LaunchedEffect(userPrefsUiState.value.userId, userPrefsUiState.value.userPw) {
         _urlToLoad = Utils.getProfileUrl(
@@ -218,16 +219,15 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                     "VirtuCardApp"
                 )
 
-                val hasNetwork = Utils.isNetworkAvailable(context)
                 if(hasNetwork) {
                     settings.cacheMode = WebSettings.LOAD_DEFAULT
-                    // if waiting more than 4s load from cache-else-network
+                    // if waiting more than 3s load from cache-else-network
                     postDelayed({
                         if(loading.value) {
                             settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                             reload()
                         }
-                    }, 4000)
+                    }, 3000)
                 } else {
                     settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                 }
@@ -243,7 +243,6 @@ fun MyWebView(userPrefsUiState: State<UserPrefsUiState>, bottomPad: Float) {
                 }
             }
         }, update = {
-            val hasNetwork = Utils.isNetworkAvailable(it.context)
             if (urlToLoad == null) {
                 if (hasNetwork) {
                     loading.value = true
